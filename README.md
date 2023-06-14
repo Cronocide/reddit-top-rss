@@ -88,7 +88,7 @@ The following optional environment variables can be used to override the applica
 
 ## Supported URL parameters
 
-There are five URL paramenters supported:
+There are seven URL paramenters supported:
 
 ### subreddit
 
@@ -113,6 +113,14 @@ Accepted values are `html` and `rss`:
 - `html` shows the front end preview.
 - `rss` shows the rendered RSS XML feed. Use this for the URL to subscribe to in your RSS aggregator.
 - If the `view` parameter is left blank or omitted, the front end is shown.
+
+### comments
+
+Specify the number of Best comments to be included in the description.
+
+### nsfw
+
+Set to 'false' to filter out NSFW posts.
 
 ## URI examples
 

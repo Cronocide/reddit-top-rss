@@ -16,7 +16,6 @@ if(CACHE_RSS_FEEDS) {
 // Sort and filter
 include "sort-and-filter.php";
 
-
 // Get Subreddit feed
 $jsonFeedFile = getFile("https://oauth.reddit.com/r/" . $subreddit . ".json", "redditJSON", "cache/reddit/$subreddit.json", 60 * 5, $accessToken);
 $jsonFeedFileParsed = json_decode($jsonFeedFile, true);
@@ -59,6 +58,7 @@ $rssNode->setAttribute("version", "2.0");
 $rssNode->setAttribute("xmlns:dc", "http://purl.org/dc/elements/1.1/");
 $rssNode->setAttribute("xmlns:content", "http://purl.org/rss/1.0/modules/content/");
 $rssNode->setAttribute("xmlns:atom", "https://www.w3.org/2005/Atom");
+$rssNode->setAttribute("xmlns:slash", "http://purl.org/rss/1.0/modules/slash/");
 
 
 // Create RFC822 Date format to comply with RFC822
@@ -100,6 +100,12 @@ foreach($jsonFeedFileItems as $item) {
 	if ($item["data"]["score"] >= $thresholdScore) {
 
 
+		// Filter NSFW posts
+		if(isset($_GET["nsfw"]) && $_GET["nsfw"] == "false" && $item["data"]["thumbnail"] == "nsfw") {
+			continue;
+		}
+
+
 		// Remove any utm junk from main item link
 		$itemDataUrl = $item["data"]["url"];
 		$itemDataUrl = preg_replace("/&?utm_(.*?)\=[^&]+/","","$itemDataUrl");
@@ -109,10 +115,27 @@ foreach($jsonFeedFileItems as $item) {
 		$itemNode = $channelNode->appendChild($xml->createElement("item"));
 
 
+		// Format the score
+		if ($item["data"]["score"] < 1000) {
+			// Anything less than a thousand
+			$scoreFormat = number_format($item["data"]["score"]);
+		} else if ($item["data"]["score"] < 1000000) {
+			// Anything less than a million
+			$scoreFormat = number_format($item["data"]["score"] / 1000, 1) . 'K';
+		} else {
+			// At least a million
+			$scoreFormat = number_format($item["data"]["score"] / 1000000, 1) . 'M';
+		}
+
+
 		// Item Title
-		$itemTitle = $item["data"]["title"];
+		if($item["data"]["stickied"]) {
+			$itemTitle = "📢 " . $item["data"]["title"];
+		} else {
+			$itemTitle = $item["data"]["title"];
+		}
 		if($item["data"]["domain"]) {
-			$itemTitle .= " (" . $item["data"]["domain"] . ")";
+			$itemTitle .= " [⇧" . $scoreFormat . "]";
 		}
 		if (
 			(strpos($itemDataUrl,"imgur") !== false && strpos($itemDataUrl,"gallery") !== false) ||
@@ -132,6 +155,30 @@ foreach($jsonFeedFileItems as $item) {
 		$guidLink->setAttribute("isPermaLink", "false");
 		$guid_node = $itemNode->appendChild($guidLink);
 
+		// Add score as a tag
+		$scoreTag = $itemNode->appendChild($xml->createElement("category"));
+                $scoreTagContents = $xml->createCDATASection("⇧ " . $scoreFormat);
+                $scoreTag->appendChild($scoreTagContents);
+
+
+		// Add flair as a tag
+		if (isset($item["data"]["link_flair_text"]) && $item["data"]["link_flair_text"] != null) {
+			$flairTag = $itemNode->appendChild($xml->createElement("category"));
+			$flairTagContents = $xml->createCDATASection($item["data"]["link_flair_text"]);
+			$flairTag->appendChild($flairTagContents);
+		}
+
+
+		// Add author name
+		$author = $itemNode->appendChild($xml->createElement("dc:creator"));
+		$authorString = "u/" . $item["data"]["author"];
+		$authorContents = $xml->createCDATASection($authorString);
+		$author->appendChild($authorContents);
+
+
+		// Add comment count
+		$commentCount = $itemNode->appendChild($xml->createElement("slash:comments", $item["data"]["num_comments"]));
+
 
 		// Create "comments" node under "item"
 		if(strpos($item["data"]["domain"], "self.") == false) {
@@ -145,10 +192,6 @@ foreach($jsonFeedFileItems as $item) {
 
 		// Create description text for "description" node
 		$itemDescription = "";
-
-
-		// Description comments link
-		$itemDescription .= "<p><a href='https://www.reddit.com" . $item["data"]["permalink"] . "'>Post permalink</a> </p>";
 
 
 		// Add media if it exists
@@ -281,6 +324,9 @@ foreach($jsonFeedFileItems as $item) {
 			$commentsJSON = getFile($commentsURL, "redditJSON", "cache/reddit/" . $item["data"]["subreddit"] . "-comments-" . $item["data"]["id"] . $_GET["comments"] . ".json", 60 * 5, $accessToken);
 			$commentsJSONParsed = json_decode($commentsJSON, true);
 			$comments = $commentsJSONParsed[1]["data"]["children"];
+			if (sizeof($comments) == 0) {
+				break;
+			}
 			if($comments[0]["data"]["author"] == "AutoModerator") {
 				unset($comments[0]);
 				$comments = array_values($comments);
@@ -299,11 +345,30 @@ foreach($jsonFeedFileItems as $item) {
 				}
 				$itemDescription .= "<ol>";
 				for ($i = 0; $i < $commentCount; $i++) {
-					$itemDescription .= "<li>" . htmlspecialchars_decode($comments[$i]["data"]["body_html"]) . "<ul><li><a href='https://www.reddit.com" . $comments[$i]["data"]["permalink"] . "'><small>Permalink</small></a> | <a href='https://www.reddit.com/user/" . $comments[$i]["data"]["author"] . "'><small>Author</small></a></li></ul></li>";
+					// Get comment score
+					if (isset($comments[$i]["data"]["score"])) {
+						if ($comments[$i]["data"]["score"] < 1000) {
+							// Anything less than a thousand
+							$commentScoreFormat = "⇧ " . number_format($comments[$i]["data"]["score"]);
+						} else if ($comments[$i]["data"]["score"] < 1000000) {
+							// Anything less than a million
+							$commentScoreFormat = "⇧ " . number_format($comments[$i]["data"]["score"] / 1000, 1) . 'K';
+						} else {
+							// At least a million
+							$commentScoreFormat = "⇧ " . number_format($comments[$i]["data"]["score"] / 1000000, 1) . 'M';
+						}
+					} else {
+							$commentScoreFormat = "Source";
+					}
+					$itemDescription .= "<li>" . htmlspecialchars_decode($comments[$i]["data"]["body_html"]) . "<ul><li><a href='https://www.reddit.com" . $comments[$i]["data"]["permalink"] . "'><small>" . $commentScoreFormat . "</small></a> | <a href='https://www.reddit.com/user/" . $comments[$i]["data"]["author"] . "'><small>u/" . $comments[$i]["data"]["author"] . "</small></a></li></ul></li>";
 				}
 				$itemDescription .= "</ol>";
 			}
 		}
+
+
+                // Description comments link
+                $itemDescription .= "<p><a href='https://www.reddit.com" . $item["data"]["permalink"] . "'>Source</a></p>";
 
 
 		//fill description node with CDATA content
@@ -314,8 +379,6 @@ foreach($jsonFeedFileItems as $item) {
 		//Published date
 		$pubDate = $xml->createElement("pubDate", date("r", $item["data"]["created_utc"]));
 		$pubDateNode = $itemNode->appendChild($pubDate);
-
-
 	}
 
 
