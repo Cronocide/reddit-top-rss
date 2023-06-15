@@ -61,6 +61,24 @@ function getFile($url, $requestType, $cachedFileLocation, $cacheExpiration, $acc
 			return $curledFile;
 			curl_close($ch);
 		}
+	} elseif($requestType == "subredditJSON" && CACHE_REDDIT_JSON) {
+		// Get Subreddit JSON file
+		// Use cached file if present
+		if (file_exists($cachedFileLocation) && time() - filemtime($cachedFileLocation) < $cacheExpiration) {
+			return file_get_contents($cachedFileLocation, true);
+		} else {
+			// Otherwise, CURL the file and cache it
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_USERAGENT, 'web:toprss:1.0 (by /u/' . REDDIT_USER . ')');
+			curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: Bearer ' . $accessToken));
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+			curl_setopt($ch, CURLOPT_URL, $url);
+			$curledFile = curl_exec($ch);
+			file_put_contents($cachedFileLocation, $curledFile);
+			return $curledFile;
+			curl_close($ch);
+		}
 	} elseif($requestType == "redditScore" && CACHE_REDDIT_JSON) {
 		// Get Reddit score file
 		// Use cached file if present

@@ -22,6 +22,10 @@ $jsonFeedFileParsed = json_decode($jsonFeedFile, true);
 $jsonFeedFileItems = $jsonFeedFileParsed["data"]["children"];
 usort($jsonFeedFileItems, "sortByCreatedDate");
 
+// Get Subreddit icon
+$iconFile = getFile("https://oauth.reddit.com/r/" . $subreddit . "/about.json", "subredditJSON", "cache/reddit/about_$subreddit.json", 60 * 5, $accessToken);
+$iconFileParsed = json_decode($iconFile, true);
+$iconFileURL = explode("?", $iconFileParsed["data"]["community_icon"])[0];
 
 // Feed description text
 $feedDescriptionText = "Hot posts in /r/";
@@ -89,7 +93,7 @@ $channelNode->appendChild($xml->createElement("language", "en-us"));
 $channelNode->appendChild($xml->createElement("lastBuildDate", $buildDate));
 $channelNode->appendChild($xml->createElement("generator", "PHP DOMDocument"));
 $channelImageNode = $channelNode->appendChild($xml->createElement("image"));
-$channelImageNode->appendChild($xml->createElement("url", "https://www.redditstatic.com/desktop2x/img/favicon/android-icon-192x192.png"));
+$channelImageNode->appendChild($xml->createElement("url", $iconFileURL));
 
 
 // Loop through feed items
