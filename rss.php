@@ -93,7 +93,11 @@ $channelNode->appendChild($xml->createElement("language", "en-us"));
 $channelNode->appendChild($xml->createElement("lastBuildDate", $buildDate));
 $channelNode->appendChild($xml->createElement("generator", "PHP DOMDocument"));
 $channelImageNode = $channelNode->appendChild($xml->createElement("image"));
-$channelImageNode->appendChild($xml->createElement("url", $iconFileURL));
+if (isset($iconFileURL)) {
+	$channelImageNode->appendChild($xml->createElement("url", $iconFileURL));
+} else {
+	$channelImageNode->appendChild($xml->createElement("url", "https://www.redditstatic.com/desktop2x/img/favicon/android-icon-192x192.png"));
+}
 
 
 // Loop through feed items
