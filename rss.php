@@ -142,9 +142,9 @@ foreach($jsonFeedFileItems as $item) {
 		} else {
 			$itemTitle = $item["data"]["title"];
 		}
-		if($item["data"]["domain"]) {
-			$itemTitle .= " [⇧" . $scoreFormat . "]";
-		}
+//		if($item["data"]["domain"]) {
+//			$itemTitle .= " [⇧" . $scoreFormat . "]";
+//		}
 		if (
 			(strpos($itemDataUrl,"imgur") !== false && strpos($itemDataUrl,"gallery") !== false) ||
 			strpos($item["data"]["url"], "www.reddit.com/gallery/")
