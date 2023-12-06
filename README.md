@@ -1,6 +1,7 @@
 # Reddit Top RSS
 
 Reddit Top RSS is a set of scripts for [Reddit's API](https://www.reddit.com/dev/api/) that generates RSS feeds for specified subreddits with score thresholds. To preview your outputted feed items there is a front end that utilizes the Bootstrap v4 framework.
+[![Build Status](https://jenkins.cronocide.net/buildStatus/icon?job=git.cronocide.net%2Freddit-top-rss%2Fmaster&subject=Jenkins%20Build)](https://jenkins.cronocide.net/job/git.cronocide.net/job/reddit-top-rss/job/master/)
 
 ## Preview
 
